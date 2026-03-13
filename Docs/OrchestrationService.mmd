@@ -1,0 +1,53 @@
+sequenceDiagram
+    participant App as Your Application
+    participant Orch as IOrchestrationService
+    participant Ctx as Session Context
+    participant LLM as LLM Provider
+    participant Tools as Agent Tools
+    participant Obs as Observer
+
+    App->>Orch: OrchestrateAsync(sessionId, message, policy)
+    activate Orch
+
+    Orch->>Ctx: GetOrCreateContext(sessionId)
+    Ctx-->>Orch: SessionContext (conversation history)
+
+    Orch->>Obs: OnOrchestrationStarting
+
+    Note over Orch: Orchestration Loop Begins
+
+    Note over Orch,Tools: Iteration 1
+
+    Orch->>Obs: OnBeforeLlmCall
+    Orch->>LLM: SendAsync(messages + tools)
+    LLM-->>Orch: Response (tool_call: get_forecast)
+    Orch->>Obs: OnResponseGenerated
+
+    Orch->>Obs: OnToolCallRequested(get_forecast)
+    Obs-->>Orch: Approved
+    Orch->>Tools: Invoke get_forecast(city: "Seattle")
+    Tools-->>Orch: { temp: 62, conditions: "partly cloudy" }
+    Orch->>Obs: OnToolExecuted(get_forecast, 45ms)
+
+    Orch->>Ctx: Append tool call + result to history
+
+    Note over Orch,Tools: Iteration 2
+
+    Orch->>Obs: OnBeforeLlmCall
+    Orch->>LLM: SendAsync(messages + tool result)
+    LLM-->>Orch: Response (text: "The forecast for Seattle is 62°...")
+    Orch->>Obs: OnResponseGenerated
+
+    Note over Orch: No tool calls — loop complete
+
+    Orch->>Ctx: Append final response to history
+
+    Orch->>Ctx: Persist context (ContextChanged)
+    Orch->>Obs: OnOrchestrationComplete
+
+    Orch-->>App: OrchestratorResult
+    deactivate Orch
+
+    Note over App: result.FinalMessage = "The forecast for Seattle is 62°..."
+    Note over App: result.TotalIterations = 2
+    Note over App: result.TotalToolCalls = 1
