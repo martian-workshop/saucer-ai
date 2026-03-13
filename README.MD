@@ -1,15 +1,15 @@
 # Saucer.AI
 
-**A highly composable AI orchestration library for C# (.NET) with native ASP pipeline support**
+**A highly composable AI orchestration library for C# (.NET) with native ASP pipeline support.**
 
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-blue.svg)](LICENSE)
 [![.NET 8+](https://img.shields.io/badge/.NET-8.0+-512BD4)](https://dotnet.microsoft.com/)
 
 ## What is Saucer.AI?
 
-Saucer.AI is an orchestration library used internally by The Martian Workshop for building AI-powered .NET applications. Using the framework, AI can be readily added to any .NET application with a few lines of code. This puts AI in any application whether it runs on a server or the desktop without deep dependencies or vendor lock-in. 
+Saucer.AI is an orchestration library used internally by The Martian Workshop for building AI-powered .NET applications. Using the framework, AI can be readily added to any .NET application with a few lines of code. This puts AI in easy reach of any application whether it runs on a server or the desktop without deep dependencies or vendor lock-in. 
 
-Saucer.AI provides multi-provider LLM support, an attribute-based tool system, and named orchestration services that integrate directly into Microsoft's ServiceProvider pipeline.
+Saucer.AI provides multi-provider LLM support, context management, an attribute-based tool system, and named orchestration services that integrate directly into Microsoft's ServiceProvider pipeline.
 
 ## Architecture and Design
 
