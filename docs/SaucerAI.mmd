@@ -1,0 +1,184 @@
+classDiagram
+    direction TB
+
+    %% ── Orchestration Service ──────────────────────────
+    IOrchestrationService *-- Orchestrator
+    IOrchestrationService *-- ILlmProviderRegistry
+    IOrchestrationService *-- ISessionContextStore
+    IOrchestrationService *-- IOrchestrationObserver
+
+    class IOrchestrationService {
+        <<Interface>>
+        +String SystemPrompt
+        +String OrchestratorRole
+        +String DefaultProviderName
+        +ILlmProviderRegistry ProviderRegistry
+        +OrchestrateAsync(sessionId, message, policy) Task~OrchestratorResult~
+        +OrchestrateStreamAsync(sessionId, message, policy) IAsyncEnumerable~OrchestrationEvent~
+        +WithLockedContextAsync(sessionId, operation) Task
+    }
+
+    %% ── Orchestrator ──────────────────────────────────
+    Orchestrator --> ILlmProvider : sends FrameworkRequest
+    Orchestrator --> IAgentTools : invokes tools
+    Orchestrator --> SessionContext : reads/writes messages
+    Orchestrator ..> OrchestratorResult : produces
+
+    class Orchestrator {
+        Core orchestration loop
+        Send → Receive → Tool Call → Repeat
+    }
+
+    class OrchestratorResult {
+        +String FinalMessage
+        +String Model
+        +int TotalPromptTokens
+        +int TotalCompletionTokens
+        +int TotalIterations
+        +int TotalToolCalls
+        +bool HasError
+        +bool WasCancelled
+    }
+
+    class OrchestrationPolicy {
+        +String LlmProvider
+        +String SystemPrompt
+        +Dictionary RequestContext
+        +Dictionary RequestData
+        +LlmOptions Options
+        +IOrchestrationObserver Observer
+    }
+
+    IOrchestrationService ..> OrchestrationPolicy : accepts per-request
+
+    %% ── Provider Abstraction ──────────────────────────
+    ILlmProviderRegistry *-- ILlmProvider
+
+    class ILlmProvider {
+        <<Interface>>
+        +SendAsync(FrameworkRequest) Task~FrameworkResponse~
+    }
+
+    ILlmProvider <|.. AnthropicProviderAdapter
+    ILlmProvider <|.. OpenAIProviderAdapter
+    ILlmProvider <|.. GeminiProviderAdapter
+
+    class AnthropicProviderAdapter { }
+    class OpenAIProviderAdapter { }
+    class GeminiProviderAdapter { }
+
+    %% ── Framework Layer ───────────────────────────────
+    class FrameworkMessage {
+        +String Role
+        +List~ContentPart~ Content
+    }
+
+    class ContentPart {
+        <<Abstract>>
+    }
+    ContentPart <|-- TextPart
+    ContentPart <|-- ToolCallPart
+    ContentPart <|-- ToolResultPart
+    ContentPart <|-- DataPart
+
+    FrameworkMessage *-- ContentPart
+    SessionContext *-- FrameworkMessage
+
+    %% ── Session Context ───────────────────────────────
+    class SessionContext {
+        +String SessionId
+        +DateTime CreatedAt
+        +DateTime LastActivity
+        +ExportState() SessionContextState
+        +RestoreState(SessionContextState)
+    }
+
+    class ISessionContextStore {
+        <<Interface>>
+        +GetOrCreateContextAsync(role, sessionId) Task~SessionContext~
+        +ContextChangedAsync(role, sessionId, context, source) Task
+        +DeleteAsync(role, sessionId) Task~bool~
+    }
+
+    ISessionContextStore ..> SessionContext : manages
+
+    %% ── Observer Pipeline ─────────────────────────────
+    class IOrchestrationObserver {
+        <<Interface>>
+        +OnOrchestrationStartingAsync(context)
+        +OnBeforeLlmCallAsync(context)
+        +OnResponseGeneratedAsync(response, context)
+        +OnToolCallRequestedAsync(request, context) Task~ToolApprovalResult~
+        +OnToolExecutedAsync(result, context)
+        +OnOrchestrationCompleteAsync(orchestrator, result, context)
+    }
+
+    IOrchestrationObserver <|.. OrchestrationObserver
+    class OrchestrationObserver {
+        <<Base Class>>
+        Virtual no-ops — override what you need
+    }
+
+    IOrchestrationObserver ..> ToolCallRequest : approves/rejects
+    IOrchestrationObserver ..> ToolCallResult : observes
+
+    class ToolCallRequest {
+        +String ToolName
+        +JsonNode Parameters
+        +int IterationNumber
+    }
+
+    class ToolCallResult {
+        +String ToolName
+        +String Content
+        +bool IsError
+        +TimeSpan ExecutionDuration
+    }
+
+    %% ── Agent Tools ───────────────────────────────────
+    class IAgentTools {
+        <<Interface>>
+    }
+
+    AgentToolRegistry ..|> IAgentTools
+    AgentToolScanner ..> AgentToolRegistry : populates
+
+    class AgentToolRegistry {
+        Stores tool definitions
+        Invokes tools by name
+    }
+
+    class AgentToolScanner {
+        Discovers [AgentToolService] classes
+        Generates MCP schemas
+    }
+
+    AgentToolRegistry *-- ToolMetadata
+
+    class ToolMetadata {
+        +String Name
+        +String Description
+        +ParameterMetadata[] Parameters
+    }
+
+    %% ── Attributes ────────────────────────────────────
+    class AgentToolServiceAttribute {
+        <<Attribute>>
+        Marks a class as a tool service
+    }
+
+    class AgentToolAttribute {
+        <<Attribute>>
+        +String Name
+        +String Description
+    }
+
+    class ToolParamAttribute {
+        <<Attribute>>
+        +String Description
+        +bool Required
+    }
+
+    AgentToolServiceAttribute --> AgentToolScanner : discovered by
+    AgentToolAttribute --> ToolMetadata : generates
+    ToolParamAttribute --> ToolMetadata : generates
