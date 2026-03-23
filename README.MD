@@ -1,23 +1,23 @@
 # Saucer.AI
 
-**A highly composable AI orchestration library for C# (.NET) with native ASP pipeline support.**
+**A full featured, highly composable AI orchestration framework for .NET(C#)**
 
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-blue.svg)](LICENSE)
 [![.NET 8+](https://img.shields.io/badge/.NET-8.0+-512BD4)](https://dotnet.microsoft.com/)
 
 ## What is Saucer.AI?
 
-Saucer.AI is an orchestration library used internally by The Martian Workshop for building AI-powered .NET applications. Using the framework, AI can be readily added to any .NET application with a few lines of code. This puts AI in easy reach of any application whether it runs on a server or the desktop without deep dependencies or vendor lock-in. 
+Saucer.AI is an orchestration framework used for building AI-powered .NET applications. Saucer is built for ease of integration with no vendor lock-in. It runs equally well in the cloud or on the desktop. 
 
-Saucer.AI provides multi-provider LLM support, context management, an attribute-based tool system, and named orchestration services that integrate directly into Microsoft's ServiceProvider pipeline.
+Saucer.AI provides multi-provider LLM support, an attribute-based tool system, and named orchestration services that integrate directly into Microsoft's ServiceProvider pipeline. This includes context and token management, tool permissions, and readily supports multi-ahent development out of the box.  
 
 ## Architecture and Design
 
-Rather than bury core concepts in unnecessary abstractions, Saucer.AI assumes a basic understanding of what an LLM orchestration loop does — send messages, get responses, execute tool calls. This approach provides clarity in the framework and transparent, composable building blocks.
+Rather than bury core concepts in layers of abstractions, Saucer.AI assumes a basic understanding of what an LLM orchestration loop does — send messages, get responses, execute tool calls. This approach provides clarity in the framework design and transparent, composable building blocks.
 
-The result is that each agent runtime registered in the DI configuration is self-documenting. Extensibility becomes natural and readily composable. There are no hidden switches or abstracted convenience wrappers that you'll need to reverse-engineer later when you need to specialize your runtime(s).
+The result is that each agent runtime registered in the DI configuration is self-documenting. Extensibility becomes natural and readily composable. There are no hidden switches or abstracted convenience wrappers that need to be reverse-engineered later when it's time to specialize the runtime(s).
 
-This also means AI coding assistants will immediately understand your architecture just by reading the startup code. For example, you can paste this code snippet into any LLM — even with no knowledge of Saucer.AI or the [Criterion Companion](https://github.com/martian-workshop/Criterion) demo application — and it will immediately be able to tell you what it does and what each component is for:
+This also means AI coding assistants immediately understand the architecture just by reading the startup code. For example, you can paste this code snippet into any LLM — even with no knowledge of Saucer.AI or the [Criterion Companion](https://martianworkshop/website/criterion) demo application — and it will immediately be able to tell you what it does and what each component is for:
 
 ```csharp
 services.AddOrchestrationService("Criterion-Chat")
@@ -198,29 +198,6 @@ builder.Services.AddOrchestrationService("Weather")
     .WithDefaultLlm("Gemini")
     .WithContextStore()
     .WithAgentToolset<WeatherTools>();  // Only WeatherTools
-```
-
-#### Inject by name
-
-```csharp
-app.MapPost("/chat", async (
-    [FromKeyedServices("Assistant")] IOrchestrationService assistant,
-    ChatRequest request) =>
-{
-    var result = await assistant.OrchestrateAsync(request.SessionId, request.Message, null);
-    return result.FinalMessage;
-});
-
-app.MapGet("/weather/{city}", async (
-    [FromKeyedServices("Weather")] IOrchestrationService weather,
-    string city) =>
-{
-    var result = await weather.OrchestrateAsync(
-        sessionId: Guid.NewGuid().ToString(),
-        userMessage: $"What's the forecast for {city}?",
-        policy: null);
-    return result.FinalMessage;
-});
 ```
 
 ### 3. Streaming with Observers
